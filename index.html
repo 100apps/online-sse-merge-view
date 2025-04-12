@@ -99,6 +99,21 @@
             };
         }
 
+        function extractContent(jsonData) {
+            // OpenAI 格式
+            if (jsonData && jsonData.output && jsonData.output.choices &&
+                jsonData.output.choices[0] && jsonData.output.choices[0].message &&
+                jsonData.output.choices[0].message.content) {
+                return jsonData.output.choices[0].message.content;
+            }
+            // 新格式
+            if (jsonData && jsonData.choices && jsonData.choices[0] &&
+                jsonData.choices[0].delta && jsonData.choices[0].delta.content) {
+                return jsonData.choices[0].delta.content;
+            }
+            return null;
+        }
+
         function mergeSseEvents() {
             const input = document.getElementById('input').value;
             const output = document.getElementById('output');
@@ -109,6 +124,32 @@
             }
 
             try {
+                // 尝试解析为单个完整的 JSON
+                try {
+                    const fullJson = JSON.parse(input);
+                    if (fullJson.streamed_data) {
+                        // 如果是包含完整流数据的 JSON
+                        const mergedContent = fullJson.choices[0].delta.content;
+                        const result = {
+                            id: fullJson.id,
+                            provider: fullJson.provider,
+                            model: fullJson.model,
+                            choices: [{
+                                message: {
+                                    content: mergedContent,
+                                    role: "assistant"
+                                },
+                                finish_reason: "stop"
+                            }],
+                            usage: fullJson.usage
+                        };
+                        output.textContent = JSON.stringify(result, null, 2);
+                        return;
+                    }
+                } catch (e) {
+                    // 不是单个完整的 JSON，继续处理为 SSE 事件
+                }
+
                 // 分割事件
                 const events = input.split('\n\n').filter(event => event.trim());
                 let mergedContent = '';
@@ -122,15 +163,18 @@
                     if (dataLine) {
                         try {
                             const jsonData = JSON.parse(dataLine.substring(5));
-                            if (!finalJson) {
-                                finalJson = jsonData;
-                                mergedContent = jsonData.output.choices[0].message.content;
-                            } else {
-                                mergedContent += jsonData.output.choices[0].message.content;
-                                // 更新最终 JSON 的内容和统计信息
-                                finalJson.output.choices[0].message.content = mergedContent;
-                                finalJson.output.choices[0].finish_reason = jsonData.output.choices[0].finish_reason;
-                                finalJson.usage = jsonData.usage;
+                            const content = extractContent(jsonData);
+
+                            if (content) {
+                                mergedContent += content;
+                                if (!finalJson) {
+                                    finalJson = jsonData;
+                                } else {
+                                    // 更新统计信息
+                                    if (jsonData.usage) {
+                                        finalJson.usage = jsonData.usage;
+                                    }
+                                }
                             }
                         } catch (e) {
                             console.error('解析 JSON 失败:', e);
@@ -141,6 +185,15 @@
                 if (!finalJson) {
                     output.textContent = '未找到有效的消息内容';
                     return;
+                }
+
+                // 更新最终的内容
+                if (finalJson && finalJson.output && finalJson.output.choices &&
+                    finalJson.output.choices[0] && finalJson.output.choices[0].message) {
+                    finalJson.output.choices[0].message.content = mergedContent;
+                } else if (finalJson && finalJson.choices && finalJson.choices[0] &&
+                    finalJson.choices[0].delta) {
+                    finalJson.choices[0].delta.content = mergedContent;
                 }
 
                 // 显示结果
