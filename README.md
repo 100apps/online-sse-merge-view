@@ -2,6 +2,8 @@
 
 一个简单但实用的工具，用于合并和格式化 Server-Sent Events (SSE) 响应数据。特别适用于处理 OpenAI 等流式 API 响应的查看和调试。
 
+Build with Cursor in 10min.
+
 ## 特性
 
 - 🚀 自动合并多个 SSE 事件
