@@ -19,7 +19,7 @@
 
 1. 克隆仓库：
 ```bash
-git clone https://github.com/guangfeng/sse-merge-view.git
+git clone https://github.com/100apps/online-sse-merge-view.git
 ```
 
 2. 直接在浏览器中打开 `index.html` 文件即可使用
