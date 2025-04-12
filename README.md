@@ -13,7 +13,7 @@
 
 ## 在线使用
 
-访问：https://guangfeng.github.io/sse-merge-view/
+访问：https://100apps.github.io/online-sse-merge-view/
 
 ## 本地使用
 
